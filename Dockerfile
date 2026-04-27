@@ -4,9 +4,9 @@ FROM ubuntu:22.04
 # Disable interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Install Desktop, XRDP, dbus aur Terminal
+# 1. Install Desktop, XRDP, tools, aur p7zip (Traffic Spirit extract karne ke liye)
 RUN apt-get update && \
-    apt-get install -y xfce4 xfce4-goodies xfce4-terminal xrdp sudo dbus-x11 wget curl gnupg && \
+    apt-get install -y xfce4 xfce4-goodies xfce4-terminal xrdp sudo dbus-x11 wget curl gnupg p7zip-full && \
     apt-get clean
 
 # FIX: XRDP SSL certificate permission
@@ -36,8 +36,22 @@ RUN sed -i 's/^test -x/#test -x/g' /etc/xrdp/startwm.sh && \
 # Expose Port
 EXPOSE 3389
 
-# Start script
-RUN echo '#!/bin/sh\nservice dbus start\nservice xrdp start\ntail -f /var/log/xrdp.log' > /start.sh && \
+# 4. STARTUP SCRIPT (Ye sabse important fix hai)
+# Ye script container on hote hi /data ka lock todegi aur folders ko link karegi
+RUN echo '#!/bin/sh\n\
+# /data folder me zaroori folders banana\n\
+mkdir -p /data/Downloads /data/ChromeCache /data/Wine\n\
+# Lock tod kar jeet user ko permission dena\n\
+chown -R jeet:jeet /data\n\
+# Purane folders delete karke 10GB wale /data se link karna\n\
+rm -rf /home/jeet/Downloads /home/jeet/.cache /home/jeet/.wine\n\
+ln -s /data/Downloads /home/jeet/Downloads\n\
+ln -s /data/ChromeCache /home/jeet/.cache\n\
+ln -s /data/Wine /home/jeet/.wine\n\
+# Services start karna\n\
+service dbus start\n\
+service xrdp start\n\
+tail -f /var/log/xrdp.log' > /start.sh && \
     chmod +x /start.sh
 
 CMD ["/start.sh"]
